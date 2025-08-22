@@ -92,12 +92,29 @@ export default function RoomPage({params}: {params: {id: string}}) {
             console.log("Received remote track:", event.track.kind);
             
             if (remoteVideoRef.current && event.streams[0]) {
-                remoteVideoRef.current.srcObject = event.streams[0];
-                setIsRemoteVideoVisible(true);
+                const video = remoteVideoRef.current;
+                const stream = event.streams[0];
                 
-                remoteVideoRef.current.play().catch(e => {
-                    console.error("Failed to play remote video:", e);
-                });
+                if (video.srcObject !== stream) {
+                    video.srcObject = stream;
+                    setIsRemoteVideoVisible(true);
+                    
+                    const playVideo = () => {
+                        video.play().catch(e => {
+                            console.error("Failed to play remote video:", e);
+                            setTimeout(() => {
+                                video.play().catch(err => console.log("Retry play failed:", err));
+                            }, 500);
+                        });
+                    };
+                    
+                    if (video.readyState >= 2) {
+                        playVideo();
+                    } else {
+                        // Wait for loadeddata event
+                        video.addEventListener('loadeddata', playVideo, { once: true });
+                    }
+                }
             } else {
                 console.error("No remote video ref or no streams");
             }
