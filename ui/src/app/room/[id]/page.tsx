@@ -123,29 +123,44 @@ export default function RoomPage({params}: {params: {id: string}}) {
         pcRef.current = pc;
 
         pc.onconnectionstatechange = () => {
-            console.log(" Connection state:", pc.connectionState);
+            console.log("Connection state:", pc.connectionState);
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                setIsRemoteVideoVisible(false);
+                setRemoteStreamRef(null);
+            }
         };
 
         pc.oniceconnectionstatechange = () => {
-            console.log(" ICE connection state:", pc.iceConnectionState);
+            console.log("ICE connection state:", pc.iceConnectionState);
+            if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                console.log("ICE connection successful!");
+            } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                setIsRemoteVideoVisible(false);
+                setRemoteStreamRef(null);
+                showNotification("Connection lost");
+            }
         };
 
         
         pc.ontrack = (event) => {
             console.log("Received remote track:", event.track.kind);
+            console.log("Remote stream ID:", event.streams[0]?.id);
+            console.log("Local stream ID:", localStreamRef.current?.id);
+            console.log("Is same stream?", event.streams[0]?.id === localStreamRef.current?.id);
             
             if (remoteVideoRef.current && event.streams[0]) {
                 const video = remoteVideoRef.current;
                 const stream = event.streams[0];
                 
-                // Check if this is not our own stream
-                if (localStreamRef.current && stream.id === localStreamRef.current.id) {
-                    console.log("Ignoring own stream in remote video");
-                    return;
-                }
+                // For now, let's remove the own stream check to see if that's the issue
+                // if (localStreamRef.current && stream.id === localStreamRef.current.id) {
+                //     console.log("Ignoring own stream in remote video");
+                //     return;
+                // }
                 
                 // Avoid setting the same stream multiple times
                 if (video.srcObject !== stream) {
+                    console.log("Setting remote video stream");
                     video.srcObject = stream;
                     setRemoteStreamRef(stream);
                     setIsRemoteVideoVisible(true);
@@ -166,6 +181,8 @@ export default function RoomPage({params}: {params: {id: string}}) {
                         // Wait for loadeddata event
                         video.addEventListener('loadeddata', playVideo, { once: true });
                     }
+                } else {
+                    console.log("Stream already set or same stream");
                 }
             } else {
                 console.error("No remote video ref or no streams");
@@ -183,13 +200,16 @@ export default function RoomPage({params}: {params: {id: string}}) {
         };
         navigator.mediaDevices.getUserMedia({video: true, audio: true})
             .then((stream) => {
+                console.log("Got local stream:", stream.id);
                 localStreamRef.current = stream;
                 
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
                 }
                 
+                console.log("Adding tracks to peer connection:");
                 stream.getTracks().forEach((track) => {
+                    console.log(`Adding ${track.kind} track:`, track.id);
                     pc.addTrack(track, stream);
                 });
 
