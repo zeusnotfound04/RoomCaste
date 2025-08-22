@@ -38,6 +38,6 @@ func main() {
 		hub.Join(roomID, peerID, conn)
 	})
 
-	log.Println("RoomCast signaling on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("RoomCast signaling on :8888")
+	log.Fatal(http.ListenAndServe(":8888", nil))
 }
