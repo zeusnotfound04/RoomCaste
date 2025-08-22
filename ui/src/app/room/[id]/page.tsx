@@ -31,11 +31,19 @@ export default function RoomPage({params}: {params: {id: string}}) {
     const [isCameraEnabled, setIsCameraEnabled] = useState(true)
     const [isRemoteVideoVisible, setIsRemoteVideoVisible] = useState(false)
     const [isClient, setIsClient] = useState(false)
+    const [remoteStreamRef, setRemoteStreamRef] = useState<MediaStream | null>(null)
+    const [notification, setNotification] = useState<string | null>(null)
 
     // Fix hydration issues
     useEffect(() => {
         setIsClient(true)
     }, [])
+
+    // Show notification function
+    const showNotification = (message: string) => {
+        setNotification(message)
+        setTimeout(() => setNotification(null), 3000)
+    }
 
     useEffect(() => {
         if (!isConnected) return;
@@ -53,9 +61,19 @@ export default function RoomPage({params}: {params: {id: string}}) {
                     break;
 
                 case "peer_joined":
+                    showNotification("Someone joined the room!")
                     if (!isOfferingRef.current) {
                         isOfferingRef.current = true;
                         createOffer();
+                    }
+                    break;
+
+                case "peer_left":
+                    showNotification("Someone left the room")
+                    setIsRemoteVideoVisible(false)
+                    setRemoteStreamRef(null)
+                    if (remoteVideoRef.current) {
+                        remoteVideoRef.current.srcObject = null
                     }
                     break;
 
@@ -120,9 +138,18 @@ export default function RoomPage({params}: {params: {id: string}}) {
                 const video = remoteVideoRef.current;
                 const stream = event.streams[0];
                 
+                // Check if this is not our own stream
+                if (localStreamRef.current && stream.id === localStreamRef.current.id) {
+                    console.log("Ignoring own stream in remote video");
+                    return;
+                }
+                
+                // Avoid setting the same stream multiple times
                 if (video.srcObject !== stream) {
                     video.srcObject = stream;
+                    setRemoteStreamRef(stream);
                     setIsRemoteVideoVisible(true);
+                    showNotification("Remote video connected!");
                     
                     const playVideo = () => {
                         video.play().catch(e => {
@@ -256,7 +283,17 @@ export default function RoomPage({params}: {params: {id: string}}) {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
+        <div className="min-h-screen bg-black text-white p-6 relative">
+            {/* Notification */}
+            {notification && (
+                <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pulse">
+                    <div className="flex items-center space-x-2">
+                        <Users className="w-5 h-5" />
+                        <span className="font-medium">{notification}</span>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="max-w-7xl mx-auto mb-8">
                 <div className="flex items-center justify-between">
@@ -271,6 +308,12 @@ export default function RoomPage({params}: {params: {id: string}}) {
                                 {isConnected ? "Connected" : "Disconnected"}
                             </span>
                         </div>
+                        {remoteStreamRef && (
+                            <div className="flex items-center space-x-2">
+                                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                                <span className="text-sm font-medium">Remote peer connected</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -323,7 +366,7 @@ export default function RoomPage({params}: {params: {id: string}}) {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
                             
-                            {!isRemoteVideoVisible && (
+                            {!isRemoteVideoVisible || !remoteStreamRef && (
                                 <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                                     <div className="text-center">
                                         <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4 mx-auto">
