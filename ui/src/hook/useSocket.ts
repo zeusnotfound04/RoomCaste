@@ -8,7 +8,11 @@ export default function useSocket(roomId: string) {
     useEffect(() => {
         const peerId = Math.random().toString(36).substring(2, 15)
         console.log(` Connecting as peer: ${peerId} to room: ${roomId}`)
-        const ws = new WebSocket(`ws://localhost:8080/ws?room=${roomId}&peer=${peerId}`)
+        
+
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws'
+        
+        const ws = new WebSocket(`${wsUrl}?room=${roomId}&peer=${peerId}`)
         wsRef.current = ws;
 
         ws.onopen = () => {

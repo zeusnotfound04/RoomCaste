@@ -1,0 +1,13 @@
+# Ignore all files and directories
+*
+**/*
+
+# ESLint ignore file - ignores all files
+# Remove specific lines below to re-enable linting for those files/directories
+
+# Example: Remove the line below to enable linting for src directory
+# !src/
+
+# Example: Remove the line below to enable linting for specific file types
+# !**/*.ts
+# !**/*.tsx
