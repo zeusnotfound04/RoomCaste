@@ -1,103 +1,164 @@
-import Image from "next/image";
+"use client"
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Zap, Shield, Sparkles } from "lucide-react";
+import BlurText, { BlurComponent } from "@/components/blur-effect";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [roomName, setRoomName] = useState("");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleJoinRoom = () => {
+    if (!roomName.trim()) return;
+    
+    setIsAnimating(true);
+    
+    setTimeout(() => {
+      router.push(`/room/${roomName.trim()}`);
+    }, 500);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleJoinRoom();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:100px_100px]"></div>
+        
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white/3 rounded-full blur-3xl"></div>
+        
+        <div className="absolute top-20 left-20 w-2 h-2 bg-white/20 rounded-full animate-pulse"></div>
+        <div className="absolute top-40 right-32 w-1 h-1 bg-white/30 rounded-full animate-ping"></div>
+        <div className="absolute bottom-32 left-1/3 w-1.5 h-1.5 bg-white/25 rounded-full animate-pulse"></div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-lg mx-auto text-center">
+
+        <div className="mb-12">
+          <BlurText
+            text="RoomCast"
+            className="text-7xl font-bold text-white mb-6 tracking-tight"
+            animateBy="letters"
+            delay={120}
+            direction="top"
+          />
+          
+          <BlurText
+            text="Premium video calling experience"
+            className="text-xl text-gray-400 font-light tracking-wide"
+            animateBy="words"
+            delay={60}
+            direction="bottom"
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Main Card */}
+        <BlurComponent delay={800} direction="bottom">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ delay: 1.2, duration: 0.6, ease: "easeOut" }}
+          >
+            <Card className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl shadow-white/5 w-full">
+              <CardHeader className="text-center space-y-3 pb-8">
+                <CardTitle className="text-3xl font-bold text-white tracking-tight">
+                  Join Room
+                </CardTitle>
+                <CardDescription className="text-gray-400 text-lg font-light">
+                  Enter your destination
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="space-y-8">
+                <div className="space-y-3">
+                  <label 
+                    htmlFor="roomName" 
+                    className="text-sm font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Room Name
+                  </label>
+                  <motion.input
+                    id="roomName"
+                    type="text"
+                    placeholder="Enter room name..."
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full px-6 py-4 rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-all duration-300 text-white placeholder-gray-500 text-lg font-light"
+                    whileFocus={{ scale: 1.02, borderColor: "rgba(255,255,255,0.3)" }}
+                    disabled={isAnimating}
+                  />
+                </div>
+
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 1.5, duration: 0.5 }}
+                >
+                  <Button
+                    onClick={handleJoinRoom}
+                    disabled={!roomName.trim() || isAnimating}
+                    size="lg"
+                    className="w-full bg-white text-black hover:bg-gray-100 font-semibold py-4 text-lg rounded-xl transition-all duration-300 transform hover:scale-105 disabled:transform-none disabled:opacity-30 shadow-lg"
+                  >
+                    {isAnimating ? (
+                      <div className="flex items-center space-x-3">
+                        <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                        <span>Connecting...</span>
+                      </div>
+                    ) : (
+                      <span className="tracking-wide">Enter Room</span>
+                    )}
+                  </Button>
+                </motion.div>
+
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 1.7, duration: 0.5 }}
+                  className="pt-6 border-t border-white/10"
+                >
+                  <p className="text-sm text-gray-500 text-center mb-4 uppercase tracking-wider font-medium">
+                    Quick Access
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {["Meeting", "Demo", "Studio"].map((name, index) => (
+                      <motion.div
+                        key={name}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 1.9 + index * 0.1, duration: 0.3 }}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRoomName(name.toLowerCase())}
+                          disabled={isAnimating}
+                          className="w-full bg-transparent border-white/20 text-gray-300 hover:bg-white/10 hover:text-white hover:border-white/30 transition-all duration-300 py-3 rounded-lg font-medium"
+                        >
+                          {name}
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </BlurComponent>
+
+        
+      </div>
     </div>
   );
 }
