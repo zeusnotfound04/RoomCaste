@@ -30,6 +30,12 @@ export default function RoomPage({params}: {params: {id: string}}) {
     const [isMicEnabled, setIsMicEnabled] = useState(true)
     const [isCameraEnabled, setIsCameraEnabled] = useState(true)
     const [isRemoteVideoVisible, setIsRemoteVideoVisible] = useState(false)
+    const [isClient, setIsClient] = useState(false)
+
+    // Fix hydration issues
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     useEffect(() => {
         if (!isConnected) return;
@@ -61,14 +67,33 @@ export default function RoomPage({params}: {params: {id: string}}) {
 
                 case "answer":
                     if (message.payload?.answer && pcRef.current) {
-                        await pcRef.current.setRemoteDescription(message.payload.answer);
-                        
+                        try {
+                            // Check if we're in the correct state to set remote description
+                            if (pcRef.current.signalingState === "have-local-offer") {
+                                await pcRef.current.setRemoteDescription(message.payload.answer);
+                                console.log("Remote answer set successfully");
+                            } else {
+                                console.warn("Cannot set remote answer in state:", pcRef.current.signalingState);
+                            }
+                        } catch (error) {
+                            console.error("Error setting remote description:", error);
+                        }
                     }
                     break;
 
                 case "candidate":
                     if (message.payload?.candidate && pcRef.current) {
-                        await pcRef.current.addIceCandidate(message.payload.candidate);
+                        try {
+                            // Only add ICE candidates if we have a remote description
+                            if (pcRef.current.remoteDescription) {
+                                await pcRef.current.addIceCandidate(message.payload.candidate);
+                                console.log("ICE candidate added successfully");
+                            } else {
+                                console.warn("Cannot add ICE candidate without remote description");
+                            }
+                        } catch (error) {
+                            console.error("Error adding ICE candidate:", error);
+                        }
                     }
                     break;
             }
@@ -356,9 +381,9 @@ export default function RoomPage({params}: {params: {id: string}}) {
                     <div className="inline-flex items-center space-x-2 bg-white/5 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/10">
                         <span className="text-sm text-gray-400">Share this room:</span>
                         <code className="text-sm font-mono text-white bg-white/10 px-2 py-1 rounded select-all cursor-pointer" 
-                              onClick={() => navigator.clipboard?.writeText(window.location.href)}
+                              onClick={() => isClient && navigator.clipboard?.writeText(window.location.href)}
                               title="Click to copy">
-                            {typeof window !== 'undefined' ? window.location.href : `Room ${id}`}
+                            {isClient ? window.location.href : `Room ${id}`}
                         </code>
                     </div>
                     
