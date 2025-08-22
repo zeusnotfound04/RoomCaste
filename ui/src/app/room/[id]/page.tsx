@@ -90,6 +90,8 @@ export default function RoomPage({params}: {params: {id: string}}) {
                             if (pcRef.current.signalingState === "have-local-offer") {
                                 await pcRef.current.setRemoteDescription(message.payload.answer);
                                 console.log("Remote answer set successfully");
+                                isRemoteDescSet = true;
+                                await processPendingCandidates();
                             } else {
                                 console.warn("Cannot set remote answer in state:", pcRef.current.signalingState);
                             }
@@ -101,30 +103,29 @@ export default function RoomPage({params}: {params: {id: string}}) {
 
                 case "candidate":
                     if (message.payload?.candidate && pcRef.current) {
-                        try {
-                            // Only add ICE candidates if we have a remote description
-                            if (pcRef.current.remoteDescription) {
-                                await pcRef.current.addIceCandidate(message.payload.candidate);
-                                console.log("ICE candidate added successfully");
-                            } else {
-                                console.warn("Cannot add ICE candidate without remote description");
-                            }
-                        } catch (error) {
-                            console.error("Error adding ICE candidate:", error);
-                        }
+                        await addCandidate(message.payload.candidate);
                     }
                     break;
             }
         });
 
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun.cloudflare.com:3478' }
+            ],
+            iceCandidatePoolSize: 10
         });
         pcRef.current = pc;
 
         pc.onconnectionstatechange = () => {
             console.log("Connection state:", pc.connectionState);
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+            if (pc.connectionState === 'connected') {
+                console.log("🎉 Peer connection established successfully!");
+                showNotification("Connected to peer!");
+            } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                console.log("❌ Peer connection failed or disconnected");
                 setIsRemoteVideoVisible(false);
                 setRemoteStreamRef(null);
             }
@@ -133,60 +134,115 @@ export default function RoomPage({params}: {params: {id: string}}) {
         pc.oniceconnectionstatechange = () => {
             console.log("ICE connection state:", pc.iceConnectionState);
             if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-                console.log("ICE connection successful!");
+                console.log("🧊 ICE connection successful!");
             } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                console.log("❌ ICE connection failed");
                 setIsRemoteVideoVisible(false);
                 setRemoteStreamRef(null);
                 showNotification("Connection lost");
             }
         };
 
+        pc.onsignalingstatechange = () => {
+            console.log("Signaling state:", pc.signalingState);
+        };
+
+        pc.onnegotiationneeded = () => {
+            console.log("Negotiation needed - creating offer");
+            createOffer();
+        };
+
         
         pc.ontrack = (event) => {
-            console.log("Received remote track:", event.track.kind);
-            console.log("Remote stream ID:", event.streams[0]?.id);
-            console.log("Local stream ID:", localStreamRef.current?.id);
-            console.log("Is same stream?", event.streams[0]?.id === localStreamRef.current?.id);
+            console.log("=== Received remote track ===");
+            console.log("Track kind:", event.track.kind);
+            console.log("Track enabled:", event.track.enabled);
+            console.log("Track ready state:", event.track.readyState);
+            console.log("Number of streams:", event.streams.length);
             
-            if (remoteVideoRef.current && event.streams[0]) {
-                const video = remoteVideoRef.current;
+            if (event.streams[0]) {
                 const stream = event.streams[0];
+                console.log("Remote stream ID:", stream.id);
+                console.log("Stream active:", stream.active);
+                console.log("Audio tracks:", stream.getAudioTracks().length);
+                console.log("Video tracks:", stream.getVideoTracks().length);
+                console.log("Local stream ID:", localStreamRef.current?.id);
                 
-                // For now, let's remove the own stream check to see if that's the issue
-                // if (localStreamRef.current && stream.id === localStreamRef.current.id) {
-                //     console.log("Ignoring own stream in remote video");
-                //     return;
-                // }
+                // Store the remote stream immediately when we get any track
+                setRemoteStreamRef(stream);
+                setIsRemoteVideoVisible(true);
                 
-                // Avoid setting the same stream multiple times
-                if (video.srcObject !== stream) {
-                    console.log("Setting remote video stream");
+                // Only set video element once we have the video track
+                if (event.track.kind === 'video' && remoteVideoRef.current) {
+                    const video = remoteVideoRef.current;
+                    
+                    console.log("Setting video element srcObject");
+                    console.log("Video element current src:", video.srcObject);
                     video.srcObject = stream;
-                    setRemoteStreamRef(stream);
-                    setIsRemoteVideoVisible(true);
                     showNotification("Remote video connected!");
                     
                     const playVideo = () => {
-                        video.play().catch(e => {
+                        console.log("Attempting to play video...");
+                        video.play().then(() => {
+                            console.log("Video playing successfully");
+                        }).catch(e => {
                             console.error("Failed to play remote video:", e);
-                            setTimeout(() => {
-                                video.play().catch(err => console.log("Retry play failed:", err));
-                            }, 500);
                         });
                     };
                     
-                    if (video.readyState >= 2) {
+                    // Use a more reliable way to wait for video
+                    video.onloadedmetadata = () => {
+                        console.log("Video metadata loaded, video dimensions:", video.videoWidth, "x", video.videoHeight);
                         playVideo();
-                    } else {
-                        // Wait for loadeddata event
-                        video.addEventListener('loadeddata', playVideo, { once: true });
-                    }
-                } else {
-                    console.log("Stream already set or same stream");
+                    };
+                    
+                    // Fallback - try to play after a delay
+                    setTimeout(() => {
+                        if (video.paused) {
+                            console.log("Fallback play attempt - video still paused");
+                            playVideo();
+                        }
+                    }, 1000);
+                    
+                    // Add more debugging
+                    video.onplay = () => console.log("Video play event fired");
+                    video.onplaying = () => console.log("Video playing event fired");
+                    video.onerror = (e) => console.error("Video error:", e);
                 }
             } else {
-                console.error("No remote video ref or no streams");
+                console.error("No streams received with track");
             }
+        };
+
+        // Queue candidates that come before remote description
+        const pendingCandidates: RTCIceCandidate[] = [];
+        let isRemoteDescSet = false;
+        
+        const addCandidate = async (candidate: RTCIceCandidate) => {
+            try {
+                if (isRemoteDescSet) {
+                    await pc.addIceCandidate(candidate);
+                    console.log("Added ICE candidate immediately");
+                } else {
+                    console.log("Queueing ICE candidate for later");
+                    pendingCandidates.push(candidate);
+                }
+            } catch (error) {
+                console.error("Failed to add ICE candidate:", error);
+            }
+        };
+        
+        const processPendingCandidates = async () => {
+            console.log(`Processing ${pendingCandidates.length} pending candidates`);
+            for (const candidate of pendingCandidates) {
+                try {
+                    await pc.addIceCandidate(candidate);
+                    console.log("Added queued ICE candidate");
+                } catch (error) {
+                    console.error("Failed to add queued ICE candidate:", error);
+                }
+            }
+            pendingCandidates.length = 0;
         };
 
         pc.onicecandidate = (event) => {
@@ -207,11 +263,13 @@ export default function RoomPage({params}: {params: {id: string}}) {
                     localVideoRef.current.srcObject = stream;
                 }
                 
-                console.log("Adding tracks to peer connection:");
+                console.log("=== Adding local tracks to peer connection ===");
+                console.log("Local stream tracks:", stream.getTracks().length);
                 stream.getTracks().forEach((track) => {
-                    console.log(`Adding ${track.kind} track:`, track.id);
+                    console.log(`Adding ${track.kind} track:`, track.id, "enabled:", track.enabled);
                     pc.addTrack(track, stream);
                 });
+                console.log("All tracks added to peer connection");
 
                 send({type: "join", roomId: id});
             })
@@ -243,6 +301,8 @@ export default function RoomPage({params}: {params: {id: string}}) {
             
             try {
                 await pcRef.current.setRemoteDescription(offer);
+                isRemoteDescSet = true;
+                await processPendingCandidates();
                 
                 const answer = await pcRef.current.createAnswer();
                 await pcRef.current.setLocalDescription(answer);
