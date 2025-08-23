@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useRef, useState, useCallback } from "react";
 
 export default function useSocket(roomId: string) {
@@ -10,7 +11,7 @@ export default function useSocket(roomId: string) {
         console.log(` Connecting as peer: ${peerId} to room: ${roomId}`)
         
 
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws'
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8888/ws'
         
         const ws = new WebSocket(`${wsUrl}?room=${roomId}&peer=${peerId}`)
         wsRef.current = ws;
