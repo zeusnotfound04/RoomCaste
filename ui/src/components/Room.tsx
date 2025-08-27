@@ -23,6 +23,7 @@ export default function({ roomId} : any){
     const [isCameraEnabled, setIsCameraEnabled] = useState(true);
     const [isRemoteConnected, setIsRemoteConnected] = useState(false);
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+    const [connectionStatus, setConnectionStatus] = useState<string>("connecting");
 
     useEffect(() => {
         if (!isConnected) return;
@@ -42,9 +43,31 @@ export default function({ roomId} : any){
                 
                 console.log("Local media initialized");
                 
-                // Create peer connection
+                // Create peer connection with STUN and TURN servers
                 const pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    iceServers: [
+                        // STUN servers for NAT discovery
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        
+                        // TURN servers for relay when direct connection fails
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        }
+                    ]
                 });
                 
                 pcRef.current = pc;
@@ -80,14 +103,18 @@ export default function({ roomId} : any){
                     }
                 };
                 
-                // Handle ICE candidates
+                // Handle ICE candidates with detailed logging
                 pc.onicecandidate = (event) => {
                     if (event.candidate) {
+                        console.log("🧊 ICE candidate type:", event.candidate.type);
+                        console.log("🧊 ICE candidate:", event.candidate.candidate);
                         console.log("Sending ICE candidate");
                         send({
                             type: "candidate",
                             payload: JSON.stringify(event.candidate)
                         });
+                    } else {
+                        console.log("🧊 ICE gathering complete");
                     }
                 };
                 
@@ -101,6 +128,20 @@ export default function({ roomId} : any){
                 // Add additional event listeners for debugging
                 pc.oniceconnectionstatechange = () => {
                     console.log("🧊 ICE connection state changed:", pc.iceConnectionState);
+                    
+                    if (pc.iceConnectionState === 'failed') {
+                        console.error("❌ ICE connection failed - NAT/firewall issue detected");
+                        console.log("🔧 TURN servers should help with cross-network connectivity");
+                        setConnectionStatus("failed");
+                    } else if (pc.iceConnectionState === 'connected') {
+                        console.log("✅ ICE connection successful!");
+                        setConnectionStatus("connected");
+                    } else if (pc.iceConnectionState === 'disconnected') {
+                        console.warn("⚠️ ICE connection disconnected - attempting reconnection");
+                        setConnectionStatus("disconnected");
+                    } else if (pc.iceConnectionState === 'checking') {
+                        setConnectionStatus("connecting");
+                    }
                 };
 
                 pc.onicegatheringstatechange = () => {
@@ -297,6 +338,16 @@ export default function({ roomId} : any){
                             <div className="text-center">
                                 <div className="text-xl mb-2">Waiting for someone to join...</div>
                                 <div className="text-sm">Room ID: {roomId}</div>
+                                {connectionStatus === "failed" && (
+                                    <div className="text-red-500 text-sm mt-2">
+                                        ❌ Connection failed - Network/firewall issue
+                                    </div>
+                                )}
+                                {connectionStatus === "connecting" && (
+                                    <div className="text-yellow-500 text-sm mt-2">
+                                        🔄 Connecting...
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
