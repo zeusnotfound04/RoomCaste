@@ -204,8 +204,6 @@ export default function RoomPage({params}: {params: {id: string}}) {
                         You
                     </div>
                 </div>
-
-                {/* Remote Video */}
                 <div className="relative bg-gray-900 rounded-lg overflow-hidden">
                     {isRemoteConnected ? (
                         <video
@@ -224,8 +222,6 @@ export default function RoomPage({params}: {params: {id: string}}) {
                     )}
                 </div>
             </div>
-
-            {/* Controls */}
             <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
                 <button
                     onClick={toggleMic}
