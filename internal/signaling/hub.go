@@ -3,7 +3,7 @@ package signaling
 import (
 	"sync"
 )
-
+  
 type Hub struct {
 	mu sync.RWMutex
 	rooms  map[string]*Room
@@ -15,7 +15,7 @@ type Room struct {
 	mu  sync.Mutex
 	peers  map[string]*Connection
 }
-
+	
 
 func NewHub() *Hub{
 	return &Hub{

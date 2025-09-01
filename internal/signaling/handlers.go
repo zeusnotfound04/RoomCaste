@@ -28,6 +28,7 @@ func handleIncoming(c *Connection, data []byte) {
 
 	switch env.Type {
 	case MsgJoin:
+		log.Printf("👋 JOIN: Peer %s joining room %s", c.peerID, c.roomID)
 		ack := Envelope{
 			Type:   MsgJoin,
 			RoomID: c.roomID,
@@ -44,12 +45,14 @@ func handleIncoming(c *Connection, data []byte) {
 			From:    c.peerID,
 			Payload: json.RawMessage(`{}`),
 		}
+		log.Printf("👋 JOIN: Notifying other peers in room %s about new peer %s", c.roomID, c.peerID)
 		c.hub.Broadcast(c.roomID, mustMarshal(notify), c.peerID)
 
 	case MsgLeave:
 		c.cleanup()
 
 	case MsgOffer:
+		log.Printf("📤 OFFER: Peer %s sending offer in room %s", env.From, env.RoomID)
 		// Handle both payload format and direct offer field
 		var offerData json.RawMessage
 		if env.Payload != nil {
@@ -67,13 +70,16 @@ func handleIncoming(c *Connection, data []byte) {
 				Payload: offerData,
 			}
 			if env.To != "" {
+				log.Printf("📤 OFFER: Routing offer from %s to %s in room %s", env.From, env.To, env.RoomID)
 				c.hub.SendTo(c.roomID, env.To, mustMarshal(response))
 			} else {
+				log.Printf("📤 OFFER: Broadcasting offer from %s in room %s", env.From, env.RoomID)
 				c.hub.Broadcast(c.roomID, mustMarshal(response), c.peerID)
 			}
 		}
 
 	case MsgAnswer:
+		log.Printf("📥 ANSWER: Peer %s sending answer in room %s", env.From, env.RoomID)
 		// Handle both payload format and direct answer field
 		var answerData json.RawMessage
 		if env.Payload != nil {
@@ -91,13 +97,16 @@ func handleIncoming(c *Connection, data []byte) {
 				Payload: answerData,
 			}
 			if env.To != "" {
+				log.Printf("📥 ANSWER: Routing answer from %s to %s in room %s", env.From, env.To, env.RoomID)
 				c.hub.SendTo(c.roomID, env.To, mustMarshal(response))
 			} else {
+				log.Printf("📥 ANSWER: Broadcasting answer from %s in room %s", env.From, env.RoomID)
 				c.hub.Broadcast(c.roomID, mustMarshal(response), c.peerID)
 			}
 		}
 
 	case MsgCandidate:
+		log.Printf("🧊 ICE: Peer %s sending ICE candidate in room %s", env.From, env.RoomID)
 		// Handle both payload format and direct candidate field
 		var candidateData json.RawMessage
 		if env.Payload != nil {
@@ -115,8 +124,10 @@ func handleIncoming(c *Connection, data []byte) {
 				Payload: candidateData,
 			}
 			if env.To != "" {
+				log.Printf("🧊 ICE: Routing ICE candidate from %s to %s in room %s", env.From, env.To, env.RoomID)
 				c.hub.SendTo(c.roomID, env.To, mustMarshal(response))
 			} else {
+				log.Printf("🧊 ICE: Broadcasting ICE candidate from %s in room %s", env.From, env.RoomID)
 				c.hub.Broadcast(c.roomID, mustMarshal(response), c.peerID)
 			}
 		}
